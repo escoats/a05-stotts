@@ -1,6 +1,4 @@
 defmodule FourRings do
-    use Bitwise
-
     def wrap64(v) do
         <<result::signed-integer-64>> = <<v::integer-64>>
         result
@@ -37,13 +35,13 @@ defmodule FourRings do
                 {num, _} ->
                     cond do
                         num < 0 ->
-                            send(neg_gk, {:input, token_counter, :neg, num})
+                            send(neg_gk, {:input, token_counter, :NEG, num})
                         num == 0 ->
-                            send(zero_gk, {:input, token_counter, :zero, num})
+                            send(zero_gk, {:input, token_counter, :ZERO, num})
                         num > 0 && rem(num, 2) == 0 ->
-                            send(even_gk, {:input, token_counter, :even, num})
+                            send(even_gk, {:input, token_counter, :POS_EVEN, num})
                         num > 0 && rem(num, 2) != 0 ->
-                            send(odd_gk, {:input, token_counter, :odd, num})
+                            send(odd_gk, {:input, token_counter, :POS_ODD, num})
                     end
                     input_loop(neg_gk, zero_gk, even_gk, odd_gk, token_counter + 1)
 
@@ -79,7 +77,7 @@ defmodule FourRings do
                 # process is blocked until "complete" message comes through
                 receive do
                     {:complete, ^token_id, ring_id, orig_input, final_val} ->
-                        IO.puts("Token #{token_id} ring #{ring_id}: #{orig_input} -> #{final_val}")
+                        IO.puts("[Token #{token_id}, #{ring_id} Ring]: #{orig_input} -> #{final_val}")
                 end
                 gatekeeper(node_1, h)
 
