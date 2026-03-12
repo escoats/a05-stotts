@@ -1,14 +1,21 @@
 defmodule FourRings do
+    use Bitwise
+
+    def wrap64(v) do
+        <<result::signed-integer-64>> = <<v::integer-64>>
+        result
+    end
+
     def start(n, h) do
         IO.puts("N = #{n}")
         IO.puts("H = #{h}")
 
         # spawn rings with transform functions
         # keep hold of pid to "gatekeeper" functions
-        neg_gk  = build_ring(n, h, fn v -> v * 3 + 1 end)
-        zero_gk = build_ring(n, h, fn v -> v + 7 end)
-        even_gk = build_ring(n, h, fn v -> v * 101 end)
-        odd_gk  = build_ring(n, h, fn v -> v * 101 + 1 end)
+        neg_gk  = build_ring(n, h, fn v -> wrap64(v * 3 + 1) end)
+        zero_gk = build_ring(n, h, fn v -> wrap64(v + 7) end)
+        even_gk = build_ring(n, h, fn v -> wrap64(v * 101) end)
+        odd_gk  = build_ring(n, h, fn v -> wrap64(v * 101 + 1) end)
 
         # prompt for input (recursive loop)
         input_loop(neg_gk, zero_gk, even_gk, odd_gk, 1)
