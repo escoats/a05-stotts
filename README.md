@@ -79,5 +79,5 @@ Nodes are represented by Java threads. Waiting and FIFO ordering is achieved usi
 
 ### Shutdown Strategy
 
-- Elixir: a `:done` message is sent to each gatekeeper, preventing additonal tokens from entering the queue. The `:done` message is also sent to each node, which do not recurse again once given the shutdown message. Because mailbox processing is ordered, previously-queued `:input` messages are processed before `:done` is handled.
-- Java: the ring manager waits until the pending queue is empty and no token remains in flight, then injects a poison token to terminate node threads in order.
+- Elixir: the user's `done` message is first sent to each ring gatekeeper, which is then propagated throughout the rings to stop execution. Because mailbox processing is ordered, all previously-queued or in-flight tokens are processed before shutdown. While shutting down, each node sends the shutdown message to the next node in the ring, and simply does not call itself again with tail recursion.
+- Java: when the user inputs `done`, the ring manager waits until the pending queue is empty and no token remains in flight, then injects a poison token to terminate node threads in order.
