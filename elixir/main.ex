@@ -82,6 +82,7 @@ defmodule FourRings do
                 gatekeeper(node_1, h)
 
             :done ->
+                send(node_1, :done)
                 :ok
         end
     end
@@ -95,7 +96,7 @@ defmodule FourRings do
     end
 
     def node_loop(next_pid, transform) do
-        receive do
+        keep_running = receive do
             {:token, token_id, ring_id, orig_input, current_val, remaining_hops, gk} ->
                 new_val = transform.(current_val)
                 hops_left = remaining_hops - 1
@@ -105,7 +106,17 @@ defmodule FourRings do
                 else
                     send(gk, {:complete, token_id, ring_id, orig_input, new_val})
                 end
+                true
+
+            :done ->
+                send(next_pid, :done)
+                false
         end
-        node_loop(next_pid, transform)
+
+        if keep_running do
+            node_loop(next_pid, transform)
+        else
+            :ok
+        end
     end
 end
