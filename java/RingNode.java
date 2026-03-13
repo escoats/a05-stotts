@@ -3,19 +3,9 @@ import java.util.concurrent.LinkedBlockingQueue;
 
 /**
  * RingNode.java - A single node in a ring; runs as its own thread.
- *
- * REASONING: Each ring has N nodes arranged in a directed cycle. A node receives
- * tokens via its inbox (BlockingQueue), applies the ring-specific transformation,
- * decrements remaining_hops, and either forwards to the next node or reports
- * completion. We use BlockingQueue for message passing because it provides
- * thread-safe FIFO semantics and blocks when empty (no busy-waiting). The
- * POISON token signals shutdown so we can terminate cleanly when the user types
- * "done".
  */
 public class RingNode implements Runnable {
-    // REASONING: Poison-pill pattern for clean shutdown. When the ring is idle and
-    // shutdown is requested, the Ring injects this sentinel. Each node forwards it
-    // to the next and exits, allowing all node threads to terminate (Section 10).
+    // Poison-pill pattern for clean shutdown.
     public static final Token POISON = new Token(-1, "SHUTDOWN", -1, -1);
 
     private final BlockingQueue<Token> inbox;
@@ -45,8 +35,7 @@ public class RingNode implements Runnable {
                     nextInbox.offer(POISON);
                     return;
                 }
-                // REASONING: Hop processing per Section 7: (1) apply ring transform,
-                // (2) decrement remaining_hops, (3) forward if >0 else report completion.
+                // Hop processing for section 7
                 token.currentVal = ringType.transform(token.currentVal);
                 token.remainingHops--;
                 if (token.remainingHops > 0) {

@@ -4,14 +4,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Ring.java - Manages one of the four rings: nodes, queueing, and token injection.
- *
- * REASONING: The spec requires (1) at most one token in flight per ring and
- * (2) FIFO queueing of additional inputs. We use a pendingQueue (BlockingQueue)
- * for FIFO and an AtomicBoolean (tokenInFlight) to enforce single-token-per-ring.
- * When a token completes, onTokenComplete() is called; we then tryInject() to
- * pull the next pending token if any. Synchronization ensures we never inject
- * while a token is still circulating. For shutdown, we send a POISON token once
- * the ring is idle and pending is empty, causing all node threads to exit.
  */
 public class Ring {
     private final String ringId;
@@ -39,8 +31,7 @@ public class Ring {
         this.tokenInFlight = new AtomicBoolean(false);
         this.shutdownRequested = false;
 
-        // REASONING: Each node has an inbox; node i forwards to (i+1) % N, forming
-        // a directed cycle (Section 5).
+        // dir cycle for node in section 5
         for (int i = 0; i < n; i++) {
             nodeInboxes[i] = new LinkedBlockingQueue<>();
         }
@@ -57,9 +48,7 @@ public class Ring {
         }
     }
 
-    // REASONING: Section 9 - if ring is idle, tryInject will pull from pending and
-    // inject immediately; if busy, work stays in pendingQueue (FIFO) until current
-    // token completes.
+    // fifo section 9.
     public void submit(Token token) {
         pendingQueue.offer(token);
         tryInject();
