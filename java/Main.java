@@ -5,19 +5,11 @@ import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Main.java - Coordinator and entry point for the Four Concurrent Rings system.
- *
- * REASONING: The spec requires a central Coordinator that (1) reads integers from
- * the keyboard, (2) routes each to one of four rings based on value, (3) prints
- * completion messages. We use a dedicated printer thread that reads from a
- * completion queue, so the main thread can focus on input without blocking on
- * I/O. Routing follows the spec: X<0→NEG, X==0→ZERO, X>0 even→POS_EVEN, X>0 odd→POS_ODD.
- * tokenId is a monotonically increasing counter (AtomicLong) for unique identification.
  */
 public class Main {
 
     public static void main(String[] args) {
-        // REASONING: N and H are program parameters per the spec (Section 2).
-        // N = nodes per ring; H = hops per token. Both must be >= 1.
+        // Section 2 parameters
         if (args.length < 2) {
             System.err.println("Usage: java Main <N> <H>");
             System.err.println("  N = ring size (number of nodes per ring), N >= 1");
@@ -32,16 +24,12 @@ public class Main {
             System.exit(1);
         }
 
-        // REASONING: BlockingQueue provides thread-safe FIFO for completion messages.
-        // The printer thread blocks on take() until a completion arrives, avoiding
-        // busy-waiting. LinkedBlockingQueue is unbounded so we don't drop messages.
+        // Blocking queue for completion messages.
         BlockingQueue<Token> completionQueue = new LinkedBlockingQueue<>();
 
         Ring.CompletionReporter reporter = token -> completionQueue.offer(token);
 
-        // REASONING: Four independent rings run concurrently (Section 5). Each ring
-        // has its own RingType for the transformation (Section 8) and CompletionReporter
-        // callback for reporting when a token finishes its H hops (Section 7).
+        // Section 5 four independent rings.
         Ring negRing = new Ring("NEG", RingType.NEG, n, h, reporter);
         Ring zeroRing = new Ring("ZERO", RingType.ZERO, n, h, reporter);
         Ring posEvenRing = new Ring("POS_EVEN", RingType.POS_EVEN, n, h, reporter);
@@ -52,9 +40,7 @@ public class Main {
         posEvenRing.start();
         posOddRing.start();
 
-        // REASONING: Printer runs in a separate thread so completion messages are
-        // printed as soon as they arrive, without blocking the input loop. The
-        // POISON_COMPLETE sentinel signals "no more completions" for clean shutdown.
+
         AtomicLong nextTokenId = new AtomicLong(0);
         Token POISON_COMPLETE = new Token(-1, "DONE", -1, -1);
         Thread printerThread = new Thread(() -> {
@@ -79,8 +65,7 @@ public class Main {
             if (!scanner.hasNextLine()) break;
             String line = scanner.nextLine().trim();
 
-            // REASONING: "done" stops new input but we must finish all queued/in-flight
-            // work before shutting down (Section 3).
+            // "done" stops new input but need to finish the queued/in-flight work
             if (line.equalsIgnoreCase("done")) {
                 done = true;
                 break;
@@ -90,15 +75,14 @@ public class Main {
             try {
                 x = Long.parseLong(line);
             } catch (NumberFormatException e) {
-                // REASONING: Per Section 3, if parsing fails we print an error and continue.
+                // section 3
                 System.err.println("Error: could not parse as integer");
                 continue;
             }
 
             long tokenId = nextTokenId.getAndIncrement();
 
-            // REASONING: Routing rules from Section 4: X<0→NEG, X==0→ZERO,
-            // X>0 even→POS_EVEN, X>0 odd→POS_ODD.
+            // routing for section 4
             if (x < 0) {
                 negRing.submit(new Token(tokenId, "NEG", x, h));
             } else if (x == 0) {
@@ -110,10 +94,6 @@ public class Main {
             }
         }
 
-        // REASONING: After "done", we must finish all queued and in-flight work.
-        // We request shutdown on each ring (stops new work, signals poison when idle),
-        // then wait for all node threads to exit. Finally we poison the completion
-        // queue so the printer thread can exit.
         negRing.requestShutdown();
         zeroRing.requestShutdown();
         posEvenRing.requestShutdown();
